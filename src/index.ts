@@ -61,9 +61,10 @@ app.get('/sync', async (req, res) => {
   }
 });
 
-// Запуск сервера
+// // Запуск сервера
 app.listen(PORT, () => {
   console.log(`🚀 Telegram Sync Service running on port ${PORT}`);
+  console.log(`🔐 Secret token: ${SECRET_TOKEN.substring(0, 4)}...`);
 });
 
 
@@ -74,13 +75,13 @@ app.listen(PORT, () => {
 // });
 
 // Запуск сервера
-app.listen(PORT, async () => {
-  console.log(`\n🚀 Telegram Sync Service started`);
-  console.log(`📡 Server running on port ${PORT}`);
-  // console.log(`📅 Sync interval: ${SYNC_INTERVAL}`);
-  console.log(`🔐 Secret token: ${SECRET_TOKEN.substring(0, 4)}...`);
+// app.listen(PORT, async () => {
+//   console.log(`\n🚀 Telegram Sync Service started`);
+//   console.log(`📡 Server running on port ${PORT}`);
+//   // console.log(`📅 Sync interval: ${SYNC_INTERVAL}`);
+//   console.log(`🔐 Secret token: ${SECRET_TOKEN.substring(0, 4)}...`);
 
-  // Первая синхронизация при старте
-  console.log('\n🔄 Running initial sync...\n');
-  await syncTelegramPosts();
-});
+  // // Первая синхронизация при старте
+  // console.log('\n🔄 Running initial sync...\n');
+  // await syncTelegramPosts();
+// });
