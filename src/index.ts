@@ -26,6 +26,12 @@ app.get('/', (req, res) => {
   });
 });
 
+
+// NOTE:
+// POST /sync endpoint is intentionally disabled.
+// This service is triggered via external cron using GET /sync?token=...
+// POST endpoint may be re-enabled in the future for admin UI or extended control.
+
 // Ручной запуск синхронизации с POST (защищён токеном)
 // app.post('/sync', async (req, res) => {
 //   const { token } = req.body;

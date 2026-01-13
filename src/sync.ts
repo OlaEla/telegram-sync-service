@@ -169,6 +169,14 @@ async function syncViaBotAPI(
         .filter(({ post }) => {
             if (!post) return false;
 
+            // 🚫 ПРОПУСКАЕМ ЗАКРЕПЛЕНИЯ
+            if (post.pinned_message) {
+              console.log(
+                `📌 Skipping pinned service message (message_id=${post.message_id})`
+              );
+              return false;
+            }
+
             // только наш канал
             if (post.chat.id.toString() !== CHAT_ID.toString()) {
                 return false;
