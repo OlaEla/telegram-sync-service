@@ -169,6 +169,14 @@ async function syncViaBotAPI(
         .filter(({ post }) => {
             if (!post) return false;
 
+            // 🚫 ПРОПУСКАЕМ ОПРОСЫ И ВИКТОРИНЫ
+            if (post.poll) {
+              console.log(
+                `📊 Skipping poll (${post.poll.type}) message_id=${post.message_id}`
+              );
+              return false;
+            }
+
             // 🚫 ПРОПУСКАЕМ ЗАКРЕПЛЕНИЯ
             if (post.pinned_message) {
               console.log(
@@ -296,11 +304,6 @@ async function savePost(
   channelAvatar: string,
   botToken: string
 ) {
-  // 🔴 Исключаем опросы
-  if (post.poll && post.poll.type === "quiz") {
-    console.log(`⏭️  Skipping quiz poll (message_id: ${post.message_id})`);
-    return;
-  }
 
   const postId = `tg_${chatId}_${post.message_id}`;
   const messageId = post.message_id;
