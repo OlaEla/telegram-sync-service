@@ -244,18 +244,37 @@ async function syncViaBotAPI(
 
     for (const { update_id, post } of channelPosts) {
       try {
-        // ✅ media group (album) handling
+        // // ✅ media group (album) handling
+        // if (post.media_group_id) {
+        //   if (processedMediaGroups.has(post.media_group_id)) {
+        //     console.log(
+        //       `⏭️  Skipping album image ${post.message_id} (media_group_id=${post.media_group_id})`
+        //     );
+        //     continue;
+        //   }
+
+        //   // первое сообщение альбома
+        //   processedMediaGroups.add(post.media_group_id);
+        // }
+
+
+        // ✅ media group (album) handling — ONLY FIRST MESSAGE
         if (post.media_group_id) {
           if (processedMediaGroups.has(post.media_group_id)) {
             console.log(
-              `⏭️  Skipping album image ${post.message_id} (media_group_id=${post.media_group_id})`
+              `⏭️  Skipping media_group item ${post.message_id} (media_group_id=${post.media_group_id})`
             );
             continue;
           }
 
-          // первое сообщение альбома
+          // ⛔ помечаем группу СРАЗУ
           processedMediaGroups.add(post.media_group_id);
+
+          console.log(
+            `📦 Processing media_group ${post.media_group_id}, message_id=${post.message_id}`
+          );
         }
+
 
         await savePost(
           connection,
