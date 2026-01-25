@@ -106,7 +106,7 @@ export async function syncTelegramPosts(): Promise<{
 
 
 
-// ===== КОД syncViaBotAPI =====
+// ===== syncViaBotAPI =====
 async function syncViaBotAPI(
   connection: mysql.PoolConnection,
   lastUpdateId = 0,
@@ -244,22 +244,34 @@ async function syncViaBotAPI(
 
     for (const { update_id, post } of channelPosts) {
       try {
-        // // ✅ media group (album) handling
-        // if (post.media_group_id) {
-        //   if (processedMediaGroups.has(post.media_group_id)) {
-        //     console.log(
-        //       `⏭️  Skipping album image ${post.message_id} (media_group_id=${post.media_group_id})`
-        //     );
-        //     continue;
-        //   }
 
-        //   // первое сообщение альбома
-        //   processedMediaGroups.add(post.media_group_id);
-        // }
+        // 🚫 SKIP HASHTAG — пропускаем ВЕСЬ альбом
+        const fullText = post.text || post.caption || '';
+        const hashtags = extractHashtags(fullText);
 
+        const SKIP_HASHTAG = process.env.TELEGRAM_SKIP_HASHTAG;
+        if (SKIP_HASHTAG && hashtags.includes(SKIP_HASHTAG.toLowerCase())) {
 
-        // ✅ media group (album) handling — ONLY FIRST MESSAGE
+          if (post.media_group_id) {
+            // ⛔ помечаем альбом как обработанный, чтобы ВСЕ его элементы были пропущены
+            processedMediaGroups.add(post.media_group_id);
+
+            console.log(
+              `⏭️  Skipping media_group ${post.media_group_id} due to #${SKIP_HASHTAG}`
+            );
+          } else {
+            console.log(
+              `⏭️  Skipping post ${post.message_id} due to #${SKIP_HASHTAG}`
+            );
+          }
+
+          continue;
+        }
+
+        // ✅ media group (album) handling — ONLY FIRST MESSAGE WITH TEXT
         if (post.media_group_id) {
+
+          // ⛔ если эту группу уже обработали — пропускаем
           if (processedMediaGroups.has(post.media_group_id)) {
             console.log(
               `⏭️  Skipping media_group item ${post.message_id} (media_group_id=${post.media_group_id})`
@@ -267,7 +279,16 @@ async function syncViaBotAPI(
             continue;
           }
 
-          // ⛔ помечаем группу СРАЗУ
+          // 🚫 первый элемент media_group ОБЯЗАН содержать текст
+          const fullText = post.text || post.caption || '';
+          if (!fullText.trim()) {
+            console.log(
+              `⛔ Skipping media_group item without text (message_id=${post.message_id})`
+            );
+            continue;
+          }
+
+          // ✅ помечаем группу как обработанную СРАЗУ
           processedMediaGroups.add(post.media_group_id);
 
           console.log(
@@ -314,7 +335,7 @@ async function syncViaBotAPI(
   }
 }
 
-// ===== КОД savePost =====
+// ===== savePost =====
 async function savePost(
   connection: mysql.PoolConnection,
   post: any,
@@ -428,7 +449,7 @@ async function savePost(
     }
   }
 
-  // 2️⃣ Скачиваем и загружаем изображение на Beget (если есть)
+  // 2️⃣ Скачиваем и загружаем изображение (если есть)
   if (post.photo?.length) {
     try {
       const largestPhoto = post.photo[post.photo.length - 1];
@@ -479,7 +500,7 @@ async function savePost(
   }
 }
 
-// ===== КОД parseTextToTitleAndParagraph =====
+// ===== parseTextToTitleAndParagraph =====
 function parseTextToTitleAndParagraph(text: string) {
   if (!text) {
     return { title: 'Untitled Post', paragraph: '' };
@@ -512,7 +533,7 @@ function parseTextToTitleAndParagraph(text: string) {
   };
 }
 
-// ===== КОД getFileUrl =====
+// ===== getFileUrl =====
 async function getFileUrl(botToken: string, fileId: string): Promise<string | null> {
   try {
     const response = await fetch(
@@ -534,13 +555,13 @@ async function getFileUrl(botToken: string, fileId: string): Promise<string | nu
   }
 }
 
-// ===== КОД extractHashtags =====
+// ===== extractHashtags =====
 function extractHashtags(text: string): string[] {
   const matches = text.match(/#[\wа-яА-ЯёЁ]+/gu) || [];
   return [...new Set(matches.map(tag => tag.slice(1).toLowerCase()))];
 }
 
-// ===== КОД downloadTelegramImage =====
+// ===== downloadTelegramImage =====
 async function downloadTelegramImage(
   fileId: string,
   postId: number
@@ -592,7 +613,7 @@ async function downloadTelegramImage(
     const buffer = Buffer.from(await imageRes.arrayBuffer());
     console.log(`✅ Downloaded ${buffer.length} bytes`);
 
-    // 3️⃣ Подключиться к Beget SFTP
+    // 3️⃣ Подключиться к SFTP
     console.log(`🔌 Connecting to SFTP: ${SFTP_USER}@${SFTP_HOST}:${SFTP_PORT}...`);
 
     await sftp.connect({
@@ -606,7 +627,7 @@ async function downloadTelegramImage(
 
     console.log('✅ SFTP connected');
 
-    // 4️⃣ Создать директории YYYY/MM на Beget
+    // 4️⃣ Создать директории YYYY/MM 
     const now = new Date();
     const year = now.getFullYear().toString();
     const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -625,7 +646,7 @@ async function downloadTelegramImage(
       console.log('✅ Directory already exists');
     }
 
-    // 5️⃣ Сохранить файл на Beget
+    // 5️⃣ Сохранить файл
     const ext = path.extname(filePath) || '.jpg';
     const fileName = `post_${postId}${ext}`;
     const remoteFilePath = `${remoteDirPath}/${fileName}`;
