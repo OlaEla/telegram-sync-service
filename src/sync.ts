@@ -335,6 +335,7 @@ async function syncViaBotAPI(
   }
 }
 
+
 // ===== savePost =====
 async function savePost(
   connection: mysql.PoolConnection,
@@ -363,26 +364,39 @@ async function savePost(
     return;
   }
 
-  // Извлекаем медиа URL (fallback для Telegram CDN)
+  // ===== MEDIA SELECTION (ALBUM SAFE) =====
   let imageUrl = null;
   let videoUrl = null;
 
-  if (post.photo && post.photo.length > 0) {
+  // 🖼️ ПРИОРИТЕТ: если есть фото — это главный кейс
+  if (post.photo?.length) {
     const largestPhoto = post.photo[post.photo.length - 1];
     imageUrl = await getFileUrl(botToken, largestPhoto.file_id);
+
+    // ❌ важно: если есть фото, видео игнорируем полностью
+    videoUrl = null;
   }
 
-  if (post.video) {
+  // 🎬 если фото НЕТ, но есть видео — значит видео-пост
+  else if (post.video) {
     videoUrl = await getFileUrl(botToken, post.video.file_id);
+
+    // превью видео используем как image
+    if (post.video.thumbnail || post.video.thumb) {
+      const thumb = post.video.thumbnail || post.video.thumb;
+      imageUrl = await getFileUrl(botToken, thumb.file_id);
+    }
   }
 
-  if (post.document) {
+  // 📎 document fallback (одиночные посты)
+  else if (post.document) {
     if (post.document.mime_type?.startsWith('image')) {
       imageUrl = await getFileUrl(botToken, post.document.file_id);
     } else if (post.document.mime_type?.startsWith('video')) {
       videoUrl = await getFileUrl(botToken, post.document.file_id);
     }
   }
+
 
   // Формируем ссылку на пост в Telegram
   const channelUsername = chatId.startsWith('@')
@@ -422,8 +436,12 @@ async function savePost(
 
   console.log(`✅ Post ${messageId} saved to DB`);
 
-  // Скачиваем: Изображение ПРЕВЬЮ ВИДЕО (если есть видео)
-  if (post.video?.thumbnail || post.video?.thumb) {
+
+  // Скачиваем превью ТОЛЬКО если это видео-пост (без фото)
+  if (
+    !post.photo?.length &&
+    (post.video?.thumbnail || post.video?.thumb)
+  ) {
     try {
       const thumbnail = post.video.thumbnail || post.video.thumb;
 
